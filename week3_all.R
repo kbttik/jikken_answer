@@ -4,6 +4,11 @@
 library(markovchain)
 library(MDPtoolbox)
 
+
+################################
+################################
+# ‚±‚±‚©‚ç2T–Ú
+
 # ƒf[ƒ^‚Ì“Ç‚İ‚İ
 source("dumpdata.R")
 
