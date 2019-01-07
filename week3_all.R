@@ -55,6 +55,14 @@ if(0){ # ó‘Ô‚Ì•‚ğŒˆ‚ß‚ÄAó‘Ô”‚ğŒˆ‚ß‚é
       Data.states[ (Data>status.breaks[i]) & (Data<=status.breaks[i+1]) ] = as.character(n.status-i+1)
     }
   }
+}
+
+if(1){
+  for( i in c(1:n.status) ) {
+    abline(h = status.breaks[i], col = "#ff00ff80")
+  }
+}
+if(0){
   plot(c(1,n.epoch),c(min(Data.states),max(Data.states)),
        xlab="Time",ylab="Status",type="n")
   for( i in c(1:n.item) ) {
