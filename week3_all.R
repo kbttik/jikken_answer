@@ -24,6 +24,9 @@ for( i in c(1:n.item) ) {
 }
 }
 
+
+#######################
+# 決めないといけないところ
 if(0){ # 状態の幅を決めて、状態数を決める
   status.min = 0.65
   status.max = 1.05
@@ -75,11 +78,11 @@ Data.mc = markovchainFit(Data.states)
 P.Dgr = Data.mc$estimate@transitionMatrix
 rownames(P.Dgr) = c(1:n.status)
 colnames(P.Dgr) = c(1:n.status)
-P.Rpr = rbind(c(1,rep(0,n.status-1)),
-              cbind(diag(1,nrow=n.status-1,ncol=n.status-1),0))
+P.Rpr = rbind(c(1,rep(0,(n.status-1))),
+              cbind(diag(1,nrow=(n.status-1),ncol=(n.status-1)),0))
 rownames(P.Rpr) = c(1:n.status)
 colnames(P.Rpr) = c(1:n.status)
-P.Rpl = matrix(rep(c(1,rep(0,n.status-1)),n.status),nrow=n.status,ncol=n.status,byrow=TRUE)
+P.Rpl = matrix(rep(c(1,rep(0,(n.status-1))),n.status),nrow=n.status,ncol=n.status,byrow=TRUE)
 rownames(P.Rpl) = c(1:n.status)
 colnames(P.Rpl) = c(1:n.status)
 
@@ -88,16 +91,16 @@ colnames(P.Rpl) = c(1:n.status)
 ################################
 # ここから3週目
 
-rownames(P.Dgr) = c(0:4)
-colnames(P.Dgr) = c(0:4)
+rownames(P.Dgr) = c(0:(n.status-1))
+colnames(P.Dgr) = c(0:(n.status-1))
 
-expand.grid(c(0:4),c(0:4))
+expand.grid(c(0:(n.status-1)),c(0:(n.status-1)))
 
 mmdp_expand.P.2(list(P.Dgr,P.Dgr)) # 実行例
 
-mmdp_expand.P.2(list(P.Dgr,mmdp_create.replacement.matrix(c(0:4))))
-mmdp_expand.P.2(list(mmdp_create.replacement.matrix(c(0:4)),P.Dgr))
-mmdp_expand.P.2(list(mmdp_create.replacement.matrix(c(0:4)),mmdp_create.replacement.matrix(c(0:4))))
+mmdp_expand.P.2(list(P.Dgr,mmdp_create.replacement.matrix(c(0:(n.status-1)))))
+mmdp_expand.P.2(list(mmdp_create.replacement.matrix(c(0:(n.status-1))),P.Dgr))
+mmdp_expand.P.2(list(mmdp_create.replacement.matrix(c(0:(n.status-1))),mmdp_create.replacement.matrix(c(0:(n.status-1)))))
 
 
 mmdp_expand.R.2 = function(R) {
@@ -112,7 +115,7 @@ mmdp_expand.R.2 = function(R) {
   return(R.Y)
 }
 
-mmdp_expand.R.2(list(c(1,2,3,4,5),c(1,2,3,4,5))) # 実行例
+mmdp_expand.R.2(list(c(1:n.status),c(1:n.status))) # 実行例
 
 
 P.Dgr.Dgr = mmdp_expand.P.2(list(P.Dgr,P.Dgr))
@@ -128,13 +131,15 @@ P.Rpl.Rpl = mmdp_expand.P.2(list(
   mmdp_create.replacement.matrix(c(0:(dim(P.Dgr)[1]-1)))))
 
 
-P = array(0, dim=c(dim(P.Dgr.Dgr)[1],dim(P.Dgr.Dgr)[2],4))
+P = array(0, dim=c(dim(P.Dgr.Dgr)[1],dim(P.Dgr.Dgr)[2], 4))
 P[,,1] = P.Dgr.Dgr
 P[,,2] = P.Rpl.Dgr
 P[,,3] = P.Dgr.Rpl
 P[,,4] = P.Rpl.Rpl
 
 
+#######################
+# 決めないといけないところ
 C.Opr = c(0,0,0,0,2000)
 C.Rpl = c(150,150,150,150,150)
 C.Opr.Opr = mmdp_expand.R.2(list(C.Opr,C.Opr))
@@ -150,4 +155,4 @@ mdp_value_iteration(P,R,0.95)
 
 optimal.policy = mdp_value_iteration(P,R,0.95) # 実行例
 
-cbind(expand.grid(c(0:4),c(0:4)),optimal.policy$policy,optimal.policy$V) # 実行例
+cbind(expand.grid(c(0:(n.status-1)),c(0:(n.status-1))),optimal.policy$policy,optimal.policy$V) # 実行例
