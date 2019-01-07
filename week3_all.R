@@ -5,8 +5,8 @@ library(markovchain)
 library(MDPtoolbox)
 
 
-################################
-################################
+################################################################
+################################################################
 # ここから2週目
 
 # データの読み込み
@@ -87,17 +87,102 @@ rownames(P.Rpl) = c(1:n.status)
 colnames(P.Rpl) = c(1:n.status)
 
 
-################################
-################################
+################################################################
+################################################################
 # ここから3週目
 
+
+################################
+################################
+# 作業1
 rownames(P.Dgr) = c(0:(n.status-1))
 colnames(P.Dgr) = c(0:(n.status-1))
 
+#状態遷移行列の生成
+#状態劣化
+mmdp_create.replacement.matrix = function(S) {
+  R.S = max(S)-min(S)
+  n.S = length(S)
+  if( R.S != n.S-1 ) {
+    stop("state space is not regular and/or does not begin with 0.")
+  }
+  P = matrix(c(1,rep(0,n.S-1)),nrow=n.S,ncol=n.S,byrow=TRUE)
+  rownames(P)=S
+  colnames(P)=S
+  return(P)
+}
+
+#直積の状態空間Sと状態ベクトルXを与えると、一番左の数字Yを返す関数
+mmdp_X.to.Y = function(X,S) {
+  mdp_check.state = function(S) {
+    if( min(S)!=0 ) {
+      stop("state space should begin with 0.")
+    } else if( max(S)!=(length(S)-1) ) {
+      stop("state space should end with N.")
+    } else {
+      return(TRUE)
+    }
+  }
+  m = length(X)
+  n = NULL
+  for( i in c(1:m) ) {
+    mdp_check.state(S[[i]])
+    if( sum(X[i] %in% S[[i]]) == 0 ) {
+      stop(paste("invalid first state. first state should be in {",paste(S.1, sep=" ", collapse=" "),"}."));
+    }
+    n = append(n,length(S[[i]]))
+  }
+  n = cumprod(n)
+  #  print(n)
+  #  print(X)
+  y = n[-m]*X[-1]
+  y = sum(y)+X[1]
+  return(y+1)
+}
+
+#その直積空間の要素数をすべて数える関数
+mmdp_X.to.Y.n = function(S) {
+  mdp_check.state = function(S) {
+    if( min(S)!=0 ) {
+      stop("state space should begin with 0.")
+    } else if( max(S)!=(length(S)-1) ) {
+      stop("state space should end with N.")
+    } else {
+      return(TRUE)
+    }
+  }
+  m = length(S)
+  x.max = NULL
+  for( i in c(1:m) ) {
+    mdp_check.state(S[[i]])
+    x.max = append(x.max,max(S[[i]]))
+  }
+  return(mmdp_X.to.Y(x.max,S))
+}
+
 expand.grid(c(0:(n.status-1)),c(0:(n.status-1)))
 
-mmdp_expand.P.2(list(P.Dgr,P.Dgr)) # 実行例
+# 状態遷移行列の組み合わせ
+mmdp_expand.P.2 = function(P) {
+  n.1 = dim(P[[1]])[1]
+  n.2 = dim(P[[2]])[1]
+  P.Y = matrix(0,
+               nrow=mmdp_X.to.Y.n(list(c(0:(n.1-1)),c(0:(n.2-1)))),
+               ncol=mmdp_X.to.Y.n(list(c(0:(n.1-1)),c(0:(n.2-1)))))
+  for( i in c(0:(n.1-1)) ) {
+    for( j in c(0:(n.2-1)) ) {
+      for( k in c(0:(n.1-1)) ) {
+        for( l in c(0:(n.2-1)) ) {
+          P.Y[mmdp_X.to.Y(c(i,j),list(c(0:(n.1-1)),c(0:(n.2-1)))),
+              mmdp_X.to.Y(c(k,l),list(c(0:(n.1-1)),c(0:(n.2-1))))] = P[[1]][i+1,k+1]*P[[2]][j+1,l+1]
+        }
+      }
+    }
+  }
+  return(P.Y)
+}
 
+mmdp_expand.P.2(list(P.Dgr,P.Dgr)) # 実行例
 mmdp_expand.P.2(list(P.Dgr,mmdp_create.replacement.matrix(c(0:(n.status-1)))))
 mmdp_expand.P.2(list(mmdp_create.replacement.matrix(c(0:(n.status-1))),P.Dgr))
 mmdp_expand.P.2(list(mmdp_create.replacement.matrix(c(0:(n.status-1))),mmdp_create.replacement.matrix(c(0:(n.status-1)))))
@@ -156,3 +241,74 @@ mdp_value_iteration(P,R,0.95)
 optimal.policy = mdp_value_iteration(P,R,0.95) # 実行例
 
 cbind(expand.grid(c(0:(n.status-1)),c(0:(n.status-1))),optimal.policy$policy,optimal.policy$V) # 実行例
+
+
+################################
+################################
+# 作業2: 年齢取り換え
+
+# 年齢取替の行動の状態遷移行列
+mmdp_create.ageing.matrix = function(S) {
+  R = max(S)-min(S)
+  n = length(S)
+  if( R != n-1 ) {
+    stop("age space is not regular and/or does not begin with 0.")
+  }
+  max.S = max(S)
+  P = rbind(cbind(0,diag(rep(1,max.S))),0)
+  P[max.S+1,max.S+1] = 1
+  rownames(P)=S
+  colnames(P)=S
+  return(P)
+}
+
+# 状態指定取替 P.Age
+mmdp_create.age.replacement.matrix = function(S,T.ast) {
+  R.S = max(S)-min(S)
+  n.S = length(S)
+  if( R.S != n.S-1 ) {
+    stop("state space is not regular and/or does not begin with 0.")
+  }
+  P = diag(rep(1,n.S))
+  P[T.ast+1,1] = 1
+  P[T.ast+1,T.ast+1] = 0
+  rownames(P) = S
+  colnames(P) = S
+  return(P)
+}
+
+mmdp_create.ageing.matrix(c(0:20))
+mmdp_create.age.replacement.matrix(c(0:(n.status-1)),2)
+
+# 故障したら取り換え必須
+P.Dgr[dim(P.Dgr)[1],] = c(1,rep(0,dim(P.Dgr)[1]-1))
+
+# 状態遷移行列の準備
+S.Dgr = c(0:(dim(P.Dgr)[1]-1))
+S.Age = c(0:10)
+P.Age = mmdp_create.ageing.matrix(S.Age)
+P.Hrd = mmdp_create.age.replacement.matrix(S.Age,4)
+P.Dgr.2 = mmdp_expand.P.2(list(P.Dgr,P.Age))
+P.Hrd.2 = mmdp_expand.P.2(list(mmdp_create.replacement.matrix(S.Dgr),P.Hrd))
+P = array(0,dim=c(dim(P.Dgr.2)[1],dim(P.Dgr.2)[2],2))
+P[,,1] = P.Dgr.2
+P[,,2] = P.Hrd.2
+
+# 費用の準備
+C.Opr.Dgr = c(0,0,0,0,2000)
+C.Opr.Age = rep(0,length(S.Age))
+C.Rpl.Dgr = rep(150,length(S.Dgr))
+C.Rpl.Age = rep(0,length(S.Age))
+C.Opr.Opr = mmdp_expand.R.2(list(C.Opr.Dgr,C.Opr.Age))
+C.Rpl.Rpl = mmdp_expand.R.2(list(C.Rpl.Dgr,C.Rpl.Age))
+Cost = cbind(C.Opr.Opr,C.Rpl.Rpl)
+R = -Cost
+
+# 年齢が6になったら、交換を行うという保全基準の方策
+cbind(expand.grid(c(0:4),c(0:10)),c(rep(1,5*6),rep(2,5*5)))
+
+# 反復によって総期待割引き費用
+mdp_eval_policy_iterative(P,R,0.95,c(rep(1,5*6),rep(2,5*5)))
+
+# 価値反復法によって、故障したら事後取替、そして年齢による予防取替、の２つの最適な方策を求める
+mdp_value_iteration(P,R,0.95)
